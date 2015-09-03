@@ -34,7 +34,7 @@
 #      are merged together (wnPipes) and unnecessary attribute fields are eliminated.
 #
 # 5).  The X and Y coordinates of the start of each pipe segment is calculated for
-#      snLines and swPipes.
+#      snLines and swPipes.  Coordinates are in NAD83Feet and NAVD88
 #
 # 6).  Intersect the swPipes and snLines layers.  Add X,Y coordinates, calculate length of swPipe and
 #      snLine for each point, and invert of each pipe at intersection based on
@@ -55,7 +55,7 @@
 #
 # 1).  ArcMap 9.3 or higher.
 #
-# 2).  A database connection to the tax_sql server.
+# 2).  A database connection to the server where the data is stored.
 #
 # 
 #
