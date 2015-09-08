@@ -53,7 +53,7 @@
 #
 # DEPENDENCIES:
 #
-# 1).  ArcMap 9.3 or higher.
+# 1).  ArcMap 10.1 or higher.
 #
 # 2).  A database connection to the server where the data is stored.
 #
@@ -71,10 +71,6 @@
 # 1). See Purpose above for Outputs.
 #
 # -----------------------------------------------------------------------------
-# NOTES:
-#
-# 
-#
 # TODO ITEMS (in no particular order)
 # 1).  
 # 2).  
@@ -82,11 +78,9 @@
 # -----------------------------------------------------------------------------
 # INSTALLATION INSTRUCTIONS:
 #
-# THIS IS FROM THE BUILDPARCELS.PY SCRIPT.
-#
 # Here is what the command should look like when used with "Schedule Tasks":
 #
-# cmd /c D:\ASSESSOR\SCRIPTS\BuildParcels.py >> BuildParcels_LOG.txt 2>&1
+# cmd /c C:\TEMP\Crossings\CalculatingUtilityCrossings.py >> Crossings_LOG.txt 2>&1
 #
 # -----------------------------------------------------------------------------
 # HISTORY:
@@ -98,6 +92,8 @@
 # not available for both storm and sewer.
 # (20121106-doig): Added code to combine three feature classes into one.  Had to add delete field
 # geoprocessing step to eliminate duplicate fields creted during merge process.
+# (20150904-doig): Added script to GitHub repository.  Making edits to standardize script for general
+#  use.
 # ==============================================================================
 #
 
@@ -106,7 +102,7 @@ import sys, string, os, arcgisscripting, time, shutil
 
 
 # Create the Geoprocessor object
-gp = arcgisscripting.create(9.3)
+gp = arcgisscripting.create(10.1)
 
 # Load required toolboxes...
 #gp.AddToolbox("C:/Program Files/ArcGIS/ArcToolbox/Toolboxes/Conversion Tools.tbx")
@@ -123,9 +119,6 @@ gp.Workspace="C:/TEMP/Crossings/Crossings" + today + ".gdb"
 
 
 # variables...
-#BUILDDIR="C:/TEMP/BUILD" + today
-#BuildGDB=BUILDDIR + "/BUILD.gdb"
-
 CrossingsDIR = "C:/TEMP/Crossings"
 
 def  MakeBuildDirectory():
@@ -146,10 +139,9 @@ def MakeGDB():
     LogMessage(" Geodatabase created")
     return
 
-# Process: Download stormwater pipe files.  
+# Process: Download stormwater pipe files.  Change "SDEFC" to match the path to your feature class.
 def CopySWFC():  
     SDEFC = "Database Connections\\Connection to durham-gis.sde\\gis_data.A1.StormWater\\gis_data.A1.swPipes"
-##    gp.Workspace="C:/TEMP/Crossings/Crossings" + today + ".gdb"
     
     LogMessage(" Copy stormwater pipes start...")
     tempEnvironment6 = gp.outputZFlag
@@ -163,7 +155,8 @@ def CopySWFC():
     
     return
 
-# Process: Add SWUtility Type Field...
+# Process: Add and calculate several fields.  Attributes deleted as the last step need to match those found
+# in your feature class.
 def AddCalcSWFields():
         
     LogMessage(" Add and populate swPipes field...")
@@ -192,7 +185,7 @@ def AddCalcSWFields():
     LogMessage(" Stormwater updated." )
     return
 
-# Process: Download snGravity pipe files.  
+# Process: Download snGravity pipe files.  Change "SDEFC" to match the path to your feature class.
 def CopySGFC():  
     SDEFC = "Database Connections\\Connection to durham-gis.sde\\gis_data.A1.SewerSystem\\gis_data.A1.snGravityMain"
         
@@ -208,7 +201,8 @@ def CopySGFC():
     
     return
 
-# Process: Add snGravityUtility Type Field...
+# Process: Add and calculate several fields.  Attributes deleted as the last step need to match those found
+# in your feature class.
 def AddCalcSGFields():
             
     LogMessage(" Add and populate snGravity field...")
@@ -227,7 +221,7 @@ def AddCalcSGFields():
 
     return
 
-# Process: Download snLateral pipe files.  
+# Process: Download snLateral pipe files.  Change "SDEFC" to match the path to your feature class.
 def CopySLFC():  
     SDEFC = "Database Connections\\Connection to durham-gis.sde\\gis_data.A1.SewerSystem\\gis_data.A1.snLateralLine"
         
@@ -243,7 +237,8 @@ def CopySLFC():
     
     return
 
-# Process: Add snLateralUtility Type Field...
+# Process: Add and calculate several fields.  Attributes deleted as the last step need to match those found
+# in your feature class.
 def AddCalcSLFields():
         
     LogMessage(" Add and populate snLateral field...")
@@ -259,7 +254,7 @@ def AddCalcSLFields():
     
     return
 
-# Process: Download snForce pipe files.  
+# Process: Download snForce pipe files.  Change "SDEFC" to match the path to your feature class.
 def CopySFFC():  
     SDEFC = "Database Connections\\Connection to durham-gis.sde\\gis_data.A1.SewerSystem\\gis_data.A1.snForceMain"
     
@@ -275,7 +270,8 @@ def CopySFFC():
     
     return
 
-# Process: Add snForceUtility Type Field...
+# Process: Add and calculate several fields.  Attributes deleted as the last step need to match those found
+# in your feature class.
 def AddCalcSFFields():
 
     LogMessage(" Add and populate snForce field...")
@@ -293,7 +289,7 @@ def AddCalcSFFields():
     return
 
 
-# Process: Merge SS Pipes...
+# Process: Merge SS Pipes.
 def MergesnFC():
         
     LogMessage(" Merge sewer pipes...")
@@ -309,7 +305,7 @@ def MergesnFC():
     return
 
 
-# Process: Clean up sewer pipe attribute fields...
+# Process: Clean up sewer pipe attribute fields.
 def CleanupsnFC():
         
     LogMessage(" Clean up sewer pipe attribute fields...")
@@ -333,56 +329,7 @@ def CleanupsnFC():
 
     return
 
-# Process: Calculate X,Y for swPipes
-def CalcSWXY():
-
-    LogMessage(" Calculate SW X,Y...")
-    gp.AddField_management("swPipes", "SWUpX", "DOUBLE", "", "", "", "", "NULLABLE", "NON_REQUIRED", "")
-    gp.AddField_management("swPipes", "SWUpY", "DOUBLE", "", "", "", "", "NULLABLE", "NON_REQUIRED", "")
-
-    rows = gp.UpdateCursor("swPipes")
-    row = rows.Next()
-    
-    while row:
-        feature = row.shape
-        row.SWUpX = feature.FirstPoint.X
-        row.SWUpY = feature.FirstPoint.Y
-        rows.UpdateRow(row)
-        row = rows.Next()
-
-    del row
-    del rows
-
-    LogMessage(" Calculate X,Y for swPipes complete.")
-    
-    return
-
-# Process: Calculate X,Y for snPipes
-def CalcSSXY():
-    
-    LogMessage(" Calculate SS X,Y...")
-    gp.AddField_management("snPipes", "SSUpX", "DOUBLE", "", "", "", "", "NULLABLE", "NON_REQUIRED", "")
-    gp.AddField_management("snPipes", "SSUpY", "DOUBLE", "", "", "", "", "NULLABLE", "NON_REQUIRED", "")
-
-    rows = gp.UpdateCursor("snPipes")
-    row = rows.Next()
-    
-    while row:
-        feature = row.shape
-        row.SSUpX = feature.FirstPoint.X
-        row.SSUpY = feature.FirstPoint.Y
-        rows.UpdateRow(row)
-        row = rows.Next()
-
-    del row
-    del rows
-
-    LogMessage(" Calculate X,Y for SSPipes complete.")
-    
-    return
-
-
-# Process: Download wnGravity pipe files.  
+# Process: Download wnGravity pipe files.  Change "SDEFC" to match the path to your feature class.
 def CopyWGFC():  
     SDEFC = "Database Connections\\Connection to durham-gis.sde\\gis_data.A1.WaterSystem\\gis_data.A1.wnGravityMain"
     
@@ -398,7 +345,8 @@ def CopyWGFC():
     
     return
 
-# Process: Add wnGravity Utility Type Field...
+# Process: Add and calculate several fields.  Attributes deleted as the last step need to match those found
+# in your feature class.
 def AddCalcWGFields():
         
     LogMessage(" Add and populate wnGravity field...")
@@ -415,7 +363,7 @@ def AddCalcWGFields():
 
     return
 
-# Process: Download wnLateral pipe files.  
+# Process: Download wnLateral pipe files.  Change "SDEFC" to match the path to your feature class.
 def CopyWLFC():  
     SDEFC = "Database Connections\\Connection to durham-gis.sde\\gis_data.A1.WaterSystem\\gis_data.A1.wnLateralLine"
     
@@ -431,7 +379,8 @@ def CopyWLFC():
     
     return
 
-# Process: Add wnLateral Utility Type Field...
+# Process: Add and calculate several fields.  Attributes deleted as the last step need to match those found
+# in your feature class.
 def AddCalcWLFields():
     
     LogMessage(" Add and populate wnLateral field...")
@@ -447,7 +396,7 @@ def AddCalcWLFields():
     
     return
 
-# Process: Download wnWaterMain pipe files.  
+# Process: Download wnWaterMain pipe files.  Change "SDEFC" to match the path to your feature class.
 def CopyWMFC():  
     SDEFC = "Database Connections\\Connection to durham-gis.sde\\gis_data.A1.WaterSystem\\gis_data.A1.wnWaterMain"
 
@@ -463,7 +412,8 @@ def CopyWMFC():
     
     return
 
-# Process: Add wnWaterMain Utility Type Field...
+# Process: Add and calculate several fields.  Attributes deleted as the last step need to match those found
+# in your feature class.
 def AddCalcWMFields():
     
     LogMessage(" Add and populate field...")
@@ -515,10 +465,63 @@ def CleanupwnFC():
 
     return
 
+#  Now for some fun--we calculate the upstream X,Y for the stormwater and sewer pipes so that we can calculate
+#  the invert for each pipe at the pipe crossing.  We do not calculate the invert for the water pipes because
+#  water is under pressure, which means there is no consistent slope along the pipe and the invert at the utility
+#  crossing can not be estimated.
+
+# Process: Calculate the upstream X,Y for swPipes.  
+def CalcSWXY():
+
+    LogMessage(" Calculate SW X,Y...")
+    gp.AddField_management("swPipes", "SWUpX", "DOUBLE", "", "", "", "", "NULLABLE", "NON_REQUIRED", "")
+    gp.AddField_management("swPipes", "SWUpY", "DOUBLE", "", "", "", "", "NULLABLE", "NON_REQUIRED", "")
+
+    rows = gp.UpdateCursor("swPipes")
+    row = rows.Next()
+    
+    while row:
+        feature = row.shape
+        row.SWUpX = feature.FirstPoint.X
+        row.SWUpY = feature.FirstPoint.Y
+        rows.UpdateRow(row)
+        row = rows.Next()
+
+    del row
+    del rows
+
+    LogMessage(" Calculate X,Y for swPipes complete.")
+    
+    return
+
+# Process: Calculate the upstream X,Y for snPipes.  
+def CalcSSXY():
+    
+    LogMessage(" Calculate SS X,Y...")
+    gp.AddField_management("snPipes", "SSUpX", "DOUBLE", "", "", "", "", "NULLABLE", "NON_REQUIRED", "")
+    gp.AddField_management("snPipes", "SSUpY", "DOUBLE", "", "", "", "", "NULLABLE", "NON_REQUIRED", "")
+
+    rows = gp.UpdateCursor("snPipes")
+    row = rows.Next()
+    
+    while row:
+        feature = row.shape
+        row.SSUpX = feature.FirstPoint.X
+        row.SSUpY = feature.FirstPoint.Y
+        rows.UpdateRow(row)
+        row = rows.Next()
+
+    del row
+    del rows
+
+    LogMessage(" Calculate X,Y for SSPipes complete.")
+    
+    return
+
+
 
 # Process: Intersect SWSS...
 def IntersectSWSS():
-#    gp.Workspace="C:/TEMP/Crossings/Crossings" + today + ".gdb"
     
     LogMessage(" Intersect sewer and storm pipes...")
     tempEnvironment10 = gp.outputZFlag
@@ -540,7 +543,7 @@ def SWSSIntersectType():
 
     return
 
-# Process: Intersect SWW...
+# Process: Intersect stormwater and water pipes.
 def IntersectSWW():
         
     LogMessage(" Intersect water and storm pipes...")
@@ -555,14 +558,14 @@ def IntersectSWW():
 
     return
 
-# Process: Add Intersection Type field and populate...
+# Process: Add Intersection Type field and populate.
 def SWWIntersectType():
     gp.AddField_management("SWWIntersect", "InterType", "TEXT", "", "", "50", "Intersection Type", "NULLABLE", "NON_REQUIRED", "")
     gp.CalculateField_management("SWWIntersect", "InterType", "\"Water-Storm\"", "", "")
     LogMessage(" Intersect type added")
 
     return
-# Process: Intersect SSW...
+# Process: Intersect sanitary sewer and water pipes.
 def IntersectSSW():
         
     LogMessage(" Intersect sewer and water pipes...")
@@ -577,7 +580,7 @@ def IntersectSSW():
 
     return
 
-# Process: Add Intersection Type field and populate...
+# Process: Add Intersection Type field and populate.
 def SSWIntersectType():
     gp.AddField_management("SSWIntersect", "InterType", "TEXT", "", "", "50", "Intersection Type", "NULLABLE", "NON_REQUIRED", "")
     gp.CalculateField_management("SSWIntersect", "InterType", "\"Sewer-Water\"", "", "")
@@ -586,9 +589,18 @@ def SSWIntersectType():
     return
 
 # Process: Calculate vertical difference for SSSW intersect point file...
-def SSSWVertSep():
+# This process involves the following steps:
+# 1. Delete numeric values that will result in bad data.  So zeros and -9999, which are both placeholders, are deleted.
+# 2. Calculate the XY at the pipe intersection.
+# 3. Calculate the slope for the stormwater and sewer pipes based on data from the original pipe files.
+# 4. Calculate the distance between the starting XY of each pipe and the XY of the pipe intersection.
+# 5. Using the distance calculated in #4 and the slope calculated in #3, calculate the pipe invert at the intersection.
+# 6. Calculate the vertical separation between the pipes, taking into account the pipe diameter.
+# 7. Calculate which utility is above the other--is storm above sewer or sewer above storm.
+# 8. Calculate if the sewer pipe actually runs through the storm pipe.
+# 9. Clean up the data where there are missing values.
 
-##    gp.Workspace="C:/TEMP/Crossings/Crossings20120628.gdb"
+def SSSWVertSep():
 
     LogMessage(" Change zero values to NULL")
 
@@ -625,9 +637,6 @@ def SSSWVertSep():
 
     LogMessage(" Make feature layer")
 
-##    gp.MakeFeatureLayer_management("SWSSIntersect", "SWSSIntersect_Layer", "\"SnUpinvert\" > 0 AND \"SnDninvert\" > 0 AND \
-##        \"SWUpinvert\" > 0 AND \"SWDninvert\" > 0", "", "")
-
     gp.MakeFeatureLayer_management("SWSSIntersect", "SWSSIntersect_Layer", "", "", "")
 
     LogMessage(" Calculating pipe slopes")
@@ -655,38 +664,6 @@ def SSSWVertSep():
 
     gp.CalculateField_management("SWSSIntersect_Layer", "SS_Invert", "[SnUpinvert]-( [Snslope]/100* [SS_Length])", "", "")
     gp.CalculateField_management("SWSSIntersect_Layer", "SW_Invert", "[SWUpinvert]-( [SWslope]/100* [SW_Length])", "", "")
-
-##    LogMessage(" Calculate vertical separation")
-##
-##    gp.CalculateField_management("SWSSIntersect_Layer", "VertSep", "[SW_Invert]- ([SS_Invert]+[SnDiam])", "", "")
-
-
-
-##    LogMessage(" Calculate crossing type")
-##
-##    gp.SelectLayerByAttribute("SWSSIntersect_Layer", "NEW_SELECTION", "VertSep > 0 AND VertSep < 20")
-##
-##    gp.CalculateField_management("SWSSIntersect_Layer", "CrossTy", "\"storm over sewer\"", "", "")
-##
-##    gp.SelectLayerByAttribute("SWSSIntersect_Layer", "NEW_SELECTION", "VertSep < 0 AND VertSep > -20")
-##
-##    gp.CalculateField_management("SWSSIntersect_Layer", "CrossTy", "\"sewer over storm\"", "", "")
-##
-##    gp.SelectLayerByAttribute("SWSSIntersect_Layer", "NEW_SELECTION", "VertSep < -20 OR VertSep > 20")
-##
-##    gp.CalculateField_management("SWSSIntersect_Layer", "CrossTy", "\"bad data?\"", "", "")
-##
-##    gp.SelectLayerByAttribute("SWSSIntersect_Layer", "NEW_SELECTION", "SWUpX > 0")
-##
-##    gp.CalculateField_management("SWSSIntersect", "VertSep", "Abs ( [SW_Invert] - ([SS_Invert]+[SnDiam]))", "", "")
-##  
-##    LogMessage(" Calculation complete")
-##
-##    gp.MakeFeatureLayer_management("SWSSIntersect", "SWSSIntersect_Layer2", "\"CrossTy\" IS NULL", "", "")
-##
-##    gp.CalculateField_management("SWSSIntersect_Layer2", "CrossTy", "\"missing data\"", "", "")
-##   
-##    LogMessage(" Calculations complete.")
 
     
 # Calculate vertical separation
@@ -731,11 +708,8 @@ def SSSWVertSep():
 
     gp.CalculateField_management("SWSSIntersect_Layer", "PipeInter", "\"No\"", "", "")
 
-##    gp.SelectLayerByAttribute("SWSSIntersect_Layer", "NEW_SELECTION", "SWUpX > 0")
-##
-##    gp.CalculateField_management("SWSSIntersect", "VertSep", "Abs ([VertSep])", "", "")
-##  
-   
+  # Clean up the data files for those crossings where data is missing
+  
     gp.MakeFeatureLayer_management("SWSSIntersect", "SWSSIntersect_Layer2", "\"CrossTy\" IS NULL", "", "")
 
     gp.SelectLayerByAttribute ("SWSSIntersect_Layer2", "NEW_SELECTION", "SS_Invert IS NULL AND SW_Invert IS NULL")
@@ -753,7 +727,7 @@ def SSSWVertSep():
     return
 
     
-# Process: Merge...
+# Process: Merge the 3 feature classes into one point file.
 def Merge3Intersects():
     
     LogMessage(" Merge feature classes...")
@@ -791,32 +765,11 @@ def FinalCleanup():
     return
 
 
-##  Alternate method for calculating crossing type.  Removed in favor of process above.
-##    rows = gp.UpdateCursor("SWSSIntersect")
-##    row = rows.Next()
-##    
-##    while row:
-##        if row.VertSep > 0:
-##            row.CrossTy = "storm over sewer"
-##        elif row.VertSep < 0:
-##            row.CrossTy = "sewer over storm"
-##        else: 
-##            row.CrossTy = "unknown"
-##        print "hello"
-##        rows.UpdateRow(row)
-##        row = rows.next()
-##
-##    del row
-##    del rows
-##
-##    gp.CalculateField_management("SWSSIntersect", "VertSep", "Abs ( [SW_Invert] - ([SS_Invert]+[SnDiam]))", "", "")
-##    
-##    LogMessage(" Vertical Separation complete")
+# Call the functions.  Remember after you build the directory once you do not need to build it again.
 
-# Call the functions
-##MakeBuildDirectory()
+MakeBuildDirectory()
 
-##MakeGDB()
+MakeGDB()
 
 CopySWFC()
 
@@ -838,10 +791,6 @@ MergesnFC()
 
 CleanupsnFC()
 
-CalcSWXY()
-
-CalcSSXY()
-
 CopyWGFC()
 
 AddCalcWGFields()
@@ -857,6 +806,10 @@ AddCalcWMFields()
 MergewnFC()
 
 CleanupwnFC()
+
+CalcSWXY()
+
+CalcSSXY()
 
 IntersectSWSS()
 
